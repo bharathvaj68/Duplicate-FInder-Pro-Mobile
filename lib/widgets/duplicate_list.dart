@@ -1,0 +1,189 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as path;
+import '../blocs/duplicate_finder_bloc.dart';
+import '../blocs/duplicate_finder_event.dart';
+import '../blocs/duplicate_finder_state.dart';
+import '../services/file_service.dart';
+
+class DuplicateList extends StatelessWidget {
+  final FileService _fileService = FileService();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<DuplicateFinderBloc, DuplicateFinderState>(
+      builder: (context, state) {
+        if (state is DuplicateFinderCompleted) {
+          return ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: state.duplicates.length,
+            itemBuilder: (context, index) {
+              final duplicate = state.duplicates[index];
+              return Card(
+                margin: EdgeInsets.only(bottom: 8),
+                child: ExpansionTile(
+                  title: Text(
+                    '${duplicate.count} identical files',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Size: ${_fileService.formatFileSize(duplicate.size)} each',
+                  ),
+                  leading: CircleAvatar(
+                    backgroundColor: Colors.red[100],
+                    child: Text(
+                      '${duplicate.count}',
+                      style: TextStyle(
+                        color: Colors.red[700],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  children: duplicate.paths.map((filePath) {
+                    return ListTile(
+                      leading: Icon(
+                        _getFileIcon(filePath),
+                        color: Colors.grey[600],
+                      ),
+                      title: Text(
+                        path.basename(filePath),
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      subtitle: Text(
+                        filePath,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) async {
+                          switch (value) {
+                            case 'open':
+                              try {
+                                await OpenFilex.open(filePath);
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Could not open file: $e'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
+                              break;
+                            case 'delete':
+                              _showDeleteConfirmation(context, filePath);
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'open',
+                            child: Row(
+                              children: [
+                                Icon(Icons.open_in_new, size: 18),
+                                SizedBox(width: 8),
+                                Text('Open'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, size: 18, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Delete', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              );
+            },
+          );
+        }
+        return SizedBox.shrink();
+      },
+    );
+  }
+
+  IconData _getFileIcon(String filePath) {
+    final extension = path.extension(filePath).toLowerCase();
+    
+    switch (extension) {
+      case '.jpg':
+      case '.jpeg':
+      case '.png':
+      case '.gif':
+      case '.bmp':
+      case '.webp':
+        return Icons.image;
+      case '.mp4':
+      case '.avi':
+      case '.mov':
+      case '.mkv':
+      case '.wmv':
+        return Icons.video_file;
+      case '.mp3':
+      case '.wav':
+      case '.flac':
+      case '.aac':
+        return Icons.audio_file;
+      case '.pdf':
+        return Icons.picture_as_pdf;
+      case '.doc':
+      case '.docx':
+        return Icons.description;
+      case '.zip':
+      case '.rar':
+      case '.7z':
+        return Icons.archive;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  void _showDeleteConfirmation(BuildContext context, String filePath) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete File'),
+          content: Text(
+            'Are you sure you want to delete this file?\n\n${path.basename(filePath)}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.read<DuplicateFinderBloc>().add(DeleteFile(filePath));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('File deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
