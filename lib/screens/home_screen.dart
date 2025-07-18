@@ -23,8 +23,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkPermissionsAndLoadDirectories() async {
-    // Check permissions again and load directories
-    if (await _hasStoragePermission()) {
+    // For mobile platforms, check permissions. For desktop, load directly.
+    if (Platform.isAndroid || Platform.isIOS) {
+      if (await _hasStoragePermission()) {
+        context.read<DuplicateFinderBloc>().add(LoadAvailableDirectories());
+      }
+    } else {
+      // Desktop platforms don't need permission checks
       context.read<DuplicateFinderBloc>().add(LoadAvailableDirectories());
     }
   }

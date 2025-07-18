@@ -13,7 +13,7 @@ class FileService {
     List<String> directories = [];
     
     try {
-      // Check permissions first
+      // Check permissions first for mobile platforms
       if (Platform.isAndroid) {
         var status = await Permission.storage.status;
         var manageStatus = await Permission.manageExternalStorage.status;
@@ -82,7 +82,7 @@ class FileService {
         } catch (e) {
           print('Error getting iOS directories: $e');
         }
-      } else {
+      } else if (Platform.isMacOS || Platform.isLinux || Platform.isWindows) {
         // For other platforms
         try {
           var documentsDir = await getApplicationDocumentsDirectory();
@@ -90,6 +90,14 @@ class FileService {
           
           if (Platform.isMacOS || Platform.isLinux) {
             var homeDir = Platform.environment['HOME'];
+            if (homeDir != null) {
+              directories.add(homeDir);
+              directories.add(path.join(homeDir, 'Downloads'));
+              directories.add(path.join(homeDir, 'Documents'));
+              directories.add(path.join(homeDir, 'Pictures'));
+            }
+          } else if (Platform.isWindows) {
+            var homeDir = Platform.environment['USERPROFILE'];
             if (homeDir != null) {
               directories.add(homeDir);
               directories.add(path.join(homeDir, 'Downloads'));

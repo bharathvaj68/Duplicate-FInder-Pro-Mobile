@@ -51,7 +51,7 @@ class MyApp extends StatelessWidget {
           fileService: FileService(),
           databaseService: DatabaseService.instance,
         ),
-        child: PermissionWrapper(),
+        child: Platform.isAndroid || Platform.isIOS ? PermissionWrapper() : HomeScreen(),
       ),
     );
   }
