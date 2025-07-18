@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'screens/home_screen.dart';
@@ -95,19 +96,22 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
   }
 
   Future<bool> _hasRequiredPermissions() async {
-    if (Theme.of(context).platform == TargetPlatform.android) {
+    if (Platform.isAndroid) {
       // Check storage permissions
       var storageStatus = await Permission.storage.status;
       var manageStorageStatus = await Permission.manageExternalStorage.status;
       
       return storageStatus.isGranted || manageStorageStatus.isGranted;
+    } else if (Platform.isIOS) {
+      // iOS doesn't require explicit storage permissions for app directories
+      return true;
     }
     return true; // For other platforms, assume permissions are granted
   }
 
   Future<void> _requestPermissions() async {
     try {
-      if (Theme.of(context).platform == TargetPlatform.android) {
+      if (Platform.isAndroid) {
         // Request storage permissions
         Map<Permission, PermissionStatus> statuses = await [
           Permission.storage,
@@ -125,6 +129,11 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
             _permissionsGranted = true;
           });
         }
+      } else {
+        // For iOS and other platforms, assume permissions are granted
+        setState(() {
+          _permissionsGranted = true;
+        });
       }
     } catch (e) {
       print('Error requesting permissions: $e');

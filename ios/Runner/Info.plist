@@ -24,6 +24,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to photo library to scan for duplicate images.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>This app needs access to documents to scan for duplicate files.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>This app needs access to downloads folder to scan for duplicate files.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -44,6 +50,10 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
 	<true/>
 </dict>
 </plist>

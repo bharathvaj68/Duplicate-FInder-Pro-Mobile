@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import '../blocs/duplicate_finder_bloc.dart';
@@ -70,7 +71,20 @@ class DirectorySelector extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: isScanning ? null : () async {
                       try {
-                        String? selectedPath = await FilePicker.platform.getDirectoryPath();
+                        String? selectedPath;
+                        if (Platform.isIOS) {
+                          // On iOS, use file picker to select files instead of directories
+                          // since iOS doesn't allow direct directory access
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Please select from available directories above'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                          return;
+                        } else {
+                          selectedPath = await FilePicker.platform.getDirectoryPath();
+                        }
                         if (selectedPath != null) {
                           context.read<DuplicateFinderBloc>().add(
                             SelectDirectory(selectedPath),
@@ -86,7 +100,7 @@ class DirectorySelector extends StatelessWidget {
                       }
                     },
                     icon: Icon(Icons.folder_open),
-                    label: Text('Browse for Directory'),
+                    label: Text(Platform.isIOS ? 'Use Available Directories' : 'Browse for Directory'),
                   ),
                 ),
               ],

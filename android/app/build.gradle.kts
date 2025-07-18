@@ -22,7 +22,7 @@ android {
     defaultConfig {
         applicationId = "com.example.dupfile_apk"
         minSdk = 21                      // ✅ Minimum SDK required for many plugins
-        targetSdk = 33                   // ✅ Target latest stable SDK
+        targetSdk = 34                   // ✅ Target latest stable SDK
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

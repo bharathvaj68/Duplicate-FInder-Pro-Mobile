@@ -9,13 +9,17 @@
     
     <!-- Query all packages permission for file operations -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    
+    <!-- Internet permission for potential future features -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:label="DupFile Finder"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
-        android:preserveLegacyExternalStorage="true">
+        android:preserveLegacyExternalStorage="true"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -24,7 +28,8 @@
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="unspecified">
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues
@@ -57,6 +62,11 @@
         <!-- Query for file manager apps -->
         <intent>
             <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <!-- Query for sharing files -->
+        <intent>
+            <action android:name="android.intent.action.SEND" />
             <data android:mimeType="*/*" />
         </intent>
     </queries>

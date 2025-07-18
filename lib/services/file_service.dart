@@ -65,6 +65,23 @@ class FileService {
         } catch (e) {
           print('Error getting app directories: $e');
         }
+      } else if (Platform.isIOS) {
+        // For iOS, use app-specific directories
+        try {
+          var documentsDir = await getApplicationDocumentsDirectory();
+          directories.add(documentsDir.path);
+          
+          // Try to get other iOS directories
+          var supportDir = await getApplicationSupportDirectory();
+          directories.add(supportDir.path);
+          
+          // Library directory
+          var libraryDir = await getLibraryDirectory();
+          directories.add(libraryDir.path);
+          
+        } catch (e) {
+          print('Error getting iOS directories: $e');
+        }
       } else {
         // For other platforms
         try {

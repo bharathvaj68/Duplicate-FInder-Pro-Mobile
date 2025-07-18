@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../blocs/duplicate_finder_bloc.dart';
@@ -29,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<bool> _hasStoragePermission() async {
-    if (Theme.of(context).platform == TargetPlatform.android) {
+    if (Platform.isAndroid) {
       var storageStatus = await Permission.storage.status;
       var manageStorageStatus = await Permission.manageExternalStorage.status;
       return storageStatus.isGranted || manageStorageStatus.isGranted;
