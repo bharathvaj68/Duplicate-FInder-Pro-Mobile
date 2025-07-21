@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/duplicate_file.dart';
+import 'recycle_bin_service.dart';
 
 class FileService {
   static const int _chunkSize = 8192; // 8KB chunks for reading files
@@ -277,12 +278,19 @@ class FileService {
 
   Future<bool> deleteFile(String filePath) async {
     try {
-      var file = File(filePath);
-      if (await file.exists()) {
-        await file.delete();
-        return true;
+      // For Android, move to recycle bin instead of permanent deletion
+      if (Platform.isAndroid) {
+        final recycleBinService = RecycleBinService();
+        return await recycleBinService.moveToRecycleBin(filePath);
+      } else {
+        // For other platforms, delete directly
+        var file = File(filePath);
+        if (await file.exists()) {
+          await file.delete();
+          return true;
+        }
+        return false;
       }
-      return false;
     } catch (e) {
       print('Error deleting file $filePath: $e');
       return false;

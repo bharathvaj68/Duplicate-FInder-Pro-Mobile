@@ -9,6 +9,7 @@ import '../widgets/directory_selector.dart';
 import '../widgets/scan_progress.dart';
 import '../widgets/duplicate_list.dart';
 import '../widgets/scan_summary.dart';
+import 'recycle_bin_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -56,6 +57,17 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             tooltip: 'Refresh directories',
           ),
+          if (Platform.isAndroid)
+            IconButton(
+              icon: Icon(Icons.delete_outline),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RecycleBinScreen()),
+                );
+              },
+              tooltip: 'Recycle Bin',
+            ),
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () async {
