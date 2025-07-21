@@ -10,6 +10,7 @@ import '../widgets/scan_progress.dart';
 import '../widgets/duplicate_list.dart';
 import '../widgets/scan_summary.dart';
 import 'recycle_bin_screen.dart';
+import 'restored_files_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -68,6 +69,16 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               tooltip: 'Recycle Bin',
             ),
+          IconButton(
+            icon: Icon(Icons.folder_special),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RestoredFilesScreen()),
+              );
+            },
+            tooltip: 'Restored Files',
+          ),
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () async {
@@ -151,9 +162,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                
+
                 SizedBox(height: 16),
-                
+
                 // Scan Progress
                 if (state is DuplicateFinderScanning)
                   Card(
@@ -162,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ScanProgress(),
                     ),
                   ),
-                
+
                 // Scan Summary
                 if (state is DuplicateFinderCompleted)
                   Card(
@@ -171,9 +182,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: ScanSummary(),
                     ),
                   ),
-                
+
                 SizedBox(height: 16),
-                
+
                 // Duplicate Files List
                 if (state is DuplicateFinderCompleted && state.duplicates.isNotEmpty)
                   Card(
@@ -192,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                
+
                 // No duplicates found
                 if (state is DuplicateFinderCompleted && state.duplicates.isEmpty)
                   Card(
@@ -220,6 +231,85 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
+
+                // Quick Actions
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.touch_app, color: Theme.of(context).colorScheme.primary),
+                            SizedBox(width: 8),
+                            Text(
+                              'Quick Actions',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => RecycleBinScreen()),
+                                  );
+                                },
+                                icon: Icon(Icons.delete_outline),
+                                label: Text('Recycle Bin'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => RestoredFilesScreen()),
+                                  );
+                                },
+                                icon: Icon(Icons.folder_special),
+                                label: Text('Restored Files'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  await openAppSettings();
+                                },
+                                icon: Icon(Icons.settings),
+                                label: Text('App Settings'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           );
