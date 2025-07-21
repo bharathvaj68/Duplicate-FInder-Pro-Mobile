@@ -1,0 +1,5 @@
+modules = ["cpp-clang14", "swift-5.8", "c-clang14", "dart-3.5"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["flutter3", "flutter"]
