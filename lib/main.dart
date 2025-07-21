@@ -13,6 +13,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
+import 'services/recycle_bin_service.dart';
+import 'screens/recycle_bin_screen.dart';
+import 'screens/restored_files_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -855,181 +858,7 @@ class SplashScreen extends StatelessWidget {
   }
 }
 
-// Recycle Bin page
-class RecycleBinPage extends StatefulWidget {
-  const RecycleBinPage({super.key});
 
-  @override
-  State<RecycleBinPage> createState() => _RecycleBinPageState();
-}
-
-class _RecycleBinPageState extends State<RecycleBinPage> {
-  Map<String, List<File>> _groupedFiles = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRecycledFiles();
-  }
-
-  String getCommonPrefix(List<String> names) {
-    if (names.isEmpty) return '';
-    String prefix = names.first;
-    for (final name in names.skip(1)) {
-      while (!name.startsWith(prefix)) {
-        if (prefix.isEmpty) return '';
-        prefix = prefix.substring(0, prefix.length - 1);
-      }
-    }
-    return prefix;
-  }
-
-  Future<String> _calculateChecksum(File file) async {
-    try {
-      final bytes = await file.readAsBytes();
-      return sha256.convert(bytes).toString();
-    } catch (e) {
-      return 'error';
-    }
-  }
-
-  Future<void> _loadRecycledFiles() async {
-    try {
-      final baseDir = Platform.isAndroid
-          ? await getExternalStorageDirectory()
-          : await getApplicationDocumentsDirectory();
-
-      final recycleDir = Directory('${baseDir!.path}${Platform.pathSeparator}dupbin');
-
-      if (!await recycleDir.exists()) {
-        await recycleDir.create(recursive: true);
-      }
-
-      final files = recycleDir.listSync().whereType<File>().toList();
-      final Map<String, List<File>> grouped = {};
-
-      for (var file in files) {
-        final checksum = await _calculateChecksum(file);
-        if (checksum != 'error') {
-          grouped.putIfAbsent(checksum, () => []).add(file);
-        }
-      }
-
-      setState(() {
-        _groupedFiles = grouped;
-      });
-    } catch (e) {
-      debugPrint('Failed to load recycle bin: $e');
-    }
-  }
-
-  Future<void> _restoreFile(BuildContext context, File file) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (localCtx) => AlertDialog(
-        title: const Text('Restore File'),
-        content: Text('Restore "${file.uri.pathSegments.last}" to Downloads?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(localCtx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(localCtx, true), child: const Text('Restore')),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    try {
-      Directory? downloadsDir;
-
-      if (Platform.isAndroid) {
-        final baseDir = await getExternalStorageDirectory();
-        downloadsDir = Directory('${baseDir!.path}/Download');
-      } else {
-        final String home = Platform.isWindows
-            ? Platform.environment['USERPROFILE'] ?? ''
-            : Platform.environment['HOME'] ?? '';
-        downloadsDir = Directory('$home${Platform.pathSeparator}Downloads');
-      }
-
-      if (downloadsDir == null) throw 'Unable to locate Downloads directory.';
-
-      final restoredDir = Directory('${downloadsDir.path}${Platform.pathSeparator}restored_dups');
-      if (!await restoredDir.exists()) {
-        await restoredDir.create(recursive: true);
-      }
-
-      final newPath = '${restoredDir.path}${Platform.pathSeparator}${file.uri.pathSegments.last}';
-      await file.rename(newPath);
-
-      _loadRecycledFiles();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Restored "${file.uri.pathSegments.last}"'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to restore: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recycle Bin'),
-      ),
-      body: _groupedFiles.isEmpty
-          ? const Center(child: Text('Recycle bin is empty.'))
-          : ListView.builder(
-              itemCount: _groupedFiles.length,
-              itemBuilder: (context, index) {
-                final entry = _groupedFiles.entries.elementAt(index);
-                final files = entry.value;
-                final names = files.map((f) => f.uri.pathSegments.last).toList();
-                final prefix = getCommonPrefix(names).trim();
-
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  elevation: 2,
-                  child: ExpansionTile(
-                    title: Text(
-                      prefix.isNotEmpty
-                          ? '$prefix... (${files.length} files)'
-                          : '${names.first} (${files.length} files)',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    children: files.map((file) {
-                      final name = file.uri.pathSegments.last;
-                      final size = file.lengthSync();
-                      final modified = file.lastModifiedSync();
-
-                      return ListTile(
-                        title: Text(name),
-                        subtitle: Text(
-                          '${(size / 1024).toStringAsFixed(2)} KB • Modified: ${modified.toLocal()}',
-                        ),
-                        onTap: () => OpenFilex.open(file.path),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.restore),
-                          tooltip: 'Restore',
-                          onPressed: () => _restoreFile(context, file),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                );
-              },
-            ),
-    );
-  }
-}
 
 // Main app screen
 class HomeScreen extends StatefulWidget {
@@ -1075,18 +904,44 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _buildScanButton(context, state),
                       const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => RecycleBinPage()),
-                          );
-                        },
-                        icon: const Icon(Icons.recycling_outlined),
-                        label: const Text('Open Recycle Bin'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const RecycleBinScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.recycling_outlined),
+                              label: const Text('Recycle Bin'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const RestoredFilesScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.restore_from_trash),
+                              label: const Text('Restored Files'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.tertiary,
+                                foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       _buildScanOptions(context, state),
                       if (_showExtensionFilter) ...[
@@ -1473,14 +1328,14 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete All Duplicates'),
-        content: const Text('Are you sure you want to delete all duplicate files except the oldest in each group?'),
+        content: const Text('Are you sure you want to move all duplicate files to recycle bin except the oldest in each group?'),
         actions: [
           TextButton(
             child: const Text('Cancel'),
             onPressed: () => Navigator.of(context).pop(false),
           ),
           ElevatedButton(
-            child: const Text('Yes, Delete'),
+            child: const Text('Yes, Move to Recycle Bin'),
             onPressed: () => Navigator.of(context).pop(true),
           ),
         ],
@@ -1489,7 +1344,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (confirmed != true) return;
 
-    final dupBin = await _getDupBinDirectory();
+    final recycleBinService = RecycleBinService();
     int totalSize = 0;
 
     for (final group in state.duplicateGroups) {
@@ -1513,16 +1368,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final file = File(f.path);
         if (await file.exists()) {
-          final fileName = file.path.split(Platform.pathSeparator).last;
-          final newPath = '${dupBin.path}${Platform.pathSeparator}$fileName';
-
           try {
             totalSize += await file.length();
-            await file.rename(newPath);
+            await recycleBinService.moveToRecycleBin(file.path);
           } catch (e) {
-            totalSize += await file.length();
-            await file.copy(newPath);
-            await file.delete();
+            debugPrint('Error moving file to recycle bin: $e');
           }
         }
       }
@@ -1531,7 +1381,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Duplicates moved to dupbin. Space saved: ${_formatSize(totalSize)}'),
+          content: Text('Duplicates moved to recycle bin. Space saved: ${_formatSize(totalSize)}'),
           backgroundColor: Colors.green,
         ),
       );
@@ -1539,15 +1389,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<Directory> _getDupBinDirectory() async {
-    final docsDir = await getApplicationDocumentsDirectory();
-    final dupBinPath = '${docsDir.path}${Platform.pathSeparator}dupbin';
-    final dupBinDir = Directory(dupBinPath);
-    if (!await dupBinDir.exists()) {
-      await dupBinDir.create(recursive: true);
-    }
-    return dupBinDir;
-  }
+  
 
   String _formatSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
@@ -1689,10 +1531,11 @@ class _HomeScreenState extends State<HomeScreen> {
     DuplicateGroup group,
     void Function() onGroupRemoved,
   ) async {
-    final dupBin = await _getDupBinDirectory();
-
     if (group.files.length <= 1) return;
 
+    final recycleBinService = RecycleBinService();
+
+    // Find the oldest file (keep it)
     final fileDateMap = <FileInfo, DateTime>{};
     for (final f in group.files) {
       try {
@@ -1709,19 +1552,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final oldest = fileDateMap.entries.reduce((a, b) => a.value.isBefore(b.value) ? a : b).key;
 
+    // Move duplicates to recycle bin (keep oldest)
     for (final f in group.files) {
       if (f.path == oldest.path) continue;
 
       final file = File(f.path);
       if (await file.exists()) {
-        final fileName = file.path.split(Platform.pathSeparator).last;
-        final newPath = '${dupBin.path}${Platform.pathSeparator}$fileName';
-
         try {
-          await file.rename(newPath);
+          await recycleBinService.moveToRecycleBin(file.path);
         } catch (e) {
-          await file.copy(newPath);
-          await file.delete();
+          debugPrint('Error moving file to recycle bin: $e');
         }
       }
     }
@@ -1730,7 +1570,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Group duplicates moved to Documents/dupbin')),
+        const SnackBar(
+          content: Text('Group duplicates moved to recycle bin'),
+          backgroundColor: Colors.green,
+        ),
       );
 
       context.read<ScanBloc>().add(RemoveDuplicateGroupEvent(group));
