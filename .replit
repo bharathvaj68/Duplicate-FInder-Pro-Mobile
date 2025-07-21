@@ -3,3 +3,15 @@ modules = ["cpp-clang14", "swift-5.8", "c-clang14", "dart-3.5"]
 [nix]
 channel = "stable-24_05"
 packages = ["flutter3", "flutter"]
+
+[workflows]
+runButton = "Run Flutter App"
+
+[[workflows.workflow]]
+name = "Run Flutter App"
+author = 15580737
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"
