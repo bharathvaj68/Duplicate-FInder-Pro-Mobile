@@ -11,7 +11,9 @@ class RecycleBinService {
   static const String _restoredMetadataFileName = 'restored_metadata.json';
   
   Future<Directory> _getRecycleBinDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
+    final appDir = Platform.isIOS 
+        ? await getApplicationDocumentsDirectory()
+        : await getApplicationDocumentsDirectory();
     final recycleBinDir = Directory(path.join(appDir.path, _recycleBinFolderName));
     
     if (!await recycleBinDir.exists()) {
@@ -22,7 +24,9 @@ class RecycleBinService {
   }
 
   Future<Directory> _getRestoredFilesDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
+    final appDir = Platform.isIOS 
+        ? await getApplicationDocumentsDirectory()
+        : await getApplicationDocumentsDirectory();
     final restoredDir = Directory(path.join(appDir.path, _restoredFilesFolderName));
     
     if (!await restoredDir.exists()) {

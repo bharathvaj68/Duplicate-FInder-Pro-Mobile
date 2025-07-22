@@ -120,7 +120,10 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
       
       return storageStatus.isGranted || manageStorageStatus.isGranted;
     } else if (Platform.isIOS) {
-      return true;
+      var photosStatus = await Permission.photos.status;
+      var mediaLibraryStatus = await Permission.mediaLibrary.status;
+      
+      return photosStatus.isGranted || mediaLibraryStatus.isGranted;
     }
     return true;
   }
@@ -135,6 +138,22 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
 
         bool granted = statuses[Permission.storage]?.isGranted == true ||
                       statuses[Permission.manageExternalStorage]?.isGranted == true;
+
+        if (!granted) {
+          _showPermissionDialog();
+        } else {
+          setState(() {
+            _permissionsGranted = true;
+          });
+        }
+      } else if (Platform.isIOS) {
+        Map<Permission, PermissionStatus> statuses = await [
+          Permission.photos,
+          Permission.mediaLibrary,
+        ].request();
+
+        bool granted = statuses[Permission.photos]?.isGranted == true ||
+                      statuses[Permission.mediaLibrary]?.isGranted == true;
 
         if (!granted) {
           _showPermissionDialog();
@@ -159,10 +178,11 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Storage Permission Required'),
+          title: Text(Platform.isIOS ? 'Photos Permission Required' : 'Storage Permission Required'),
           content: Text(
-            'This app needs storage permission to scan for duplicate files. '
-            'Please grant storage permission in the app settings.',
+            Platform.isIOS 
+              ? 'This app needs photos permission to scan for duplicate files. Please grant photos permission in the app settings.'
+              : 'This app needs storage permission to scan for duplicate files. Please grant storage permission in the app settings.',
           ),
           actions: [
             TextButton(
@@ -593,10 +613,16 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
     List<File> files = [];
 
     try {
-      if (Platform.isAndroid || Platform.isIOS) {
+      if (Platform.isAndroid) {
         final status = await Permission.manageExternalStorage.request();
         if (!status.isGranted) {
           emit(state.copyWith(status: ScanStatus.error, error: 'Storage permission denied.'));
+          return;
+        }
+      } else if (Platform.isIOS) {
+        final status = await Permission.photos.request();
+        if (!status.isGranted) {
+          emit(state.copyWith(status: ScanStatus.error, error: 'Photos permission denied.'));
           return;
         }
       }

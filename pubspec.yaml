@@ -28,3 +28,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+# iOS specific configuration
+ios:
+  deployment_target: '12.0'
