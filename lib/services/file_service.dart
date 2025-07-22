@@ -93,9 +93,27 @@ class FileService {
             var homeDir = Platform.environment['HOME'];
             if (homeDir != null) {
               directories.add(homeDir);
-              directories.add(path.join(homeDir, 'Downloads'));
-              directories.add(path.join(homeDir, 'Documents'));
-              directories.add(path.join(homeDir, 'Pictures'));
+              // For Linux, add common directories
+              var commonLinuxDirs = [
+                path.join(homeDir, 'Downloads'),
+                path.join(homeDir, 'Documents'),
+                path.join(homeDir, 'Pictures'),
+                path.join(homeDir, 'Desktop'),
+                path.join(homeDir, 'Videos'),
+                path.join(homeDir, 'Music'),
+              ];
+              
+              for (String dirPath in commonLinuxDirs) {
+                if (await Directory(dirPath).exists()) {
+                  directories.add(dirPath);
+                }
+              }
+              
+              // Add current workspace directory for Replit
+              if (Platform.isLinux) {
+                var workspaceDir = Directory.current.path;
+                directories.add(workspaceDir);
+              }
             }
           } else if (Platform.isWindows) {
             var homeDir = Platform.environment['USERPROFILE'];
