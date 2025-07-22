@@ -156,7 +156,7 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
                       statuses[Permission.mediaLibrary]?.isGranted == true;
 
         if (!granted) {
-          _showPermissionDialog();
+          _showPermissionDialog(this.context);
         } else {
           setState(() {
             _permissionsGranted = true;
@@ -172,7 +172,7 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
     }
   }
 
-  void _showPermissionDialog() {
+  void _showPermissionDialog(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: false,
