@@ -1,5 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:open_filex/open_filex.dart';
+import 'dart:io';
+import 'package:path/path.dart' as path;
 import '../blocs/duplicate_finder_bloc.dart';
 import '../blocs/duplicate_finder_state.dart';
 import '../services/file_service.dart';
@@ -74,11 +78,217 @@ class ScanSummary extends StatelessWidget {
                   ),
                 ],
               ),
+              if (state.duplicates.isNotEmpty) ...[
+                SizedBox(height: 16),
+                Text(
+                  'Recent Files',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SizedBox(height: 8),
+                Container(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: state.duplicates.take(5).length,
+                    itemBuilder: (context, index) {
+                      final duplicate = state.duplicates[index];
+                      final firstFilePath = duplicate.paths.first;
+                      final fileName = path.basename(firstFilePath);
+                      final folderPath = path.dirname(firstFilePath);
+                      
+                      return Container(
+                        width: 140,
+                        margin: EdgeInsets.only(right: 8),
+                        child: Card(
+                          elevation: 2,
+                          child: Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // File icon and name (clickable to open file)
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => _openFile(firstFilePath, context),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            _getFileIcon(fileName),
+                                            size: 32,
+                                            color: Colors.blue,
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            fileName,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                // Folder icon (clickable to open folder)
+                                InkWell(
+                                  onTap: () => _openFolder(folderPath, context),
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.folder_open,
+                                          size: 16,
+                                          color: Colors.orange,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Open Folder',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.orange,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ],
           );
         }
         return SizedBox.shrink();
       },
+    );
+  }
+
+  IconData _getFileIcon(String fileName) {
+    final extension = path.extension(fileName).toLowerCase();
+    switch (extension) {
+      case '.jpg':
+      case '.jpeg':
+      case '.png':
+      case '.gif':
+      case '.bmp':
+      case '.webp':
+        return Icons.image;
+      case '.mp4':
+      case '.avi':
+      case '.mov':
+      case '.wmv':
+      case '.flv':
+      case '.webm':
+        return Icons.video_file;
+      case '.mp3':
+      case '.wav':
+      case '.flac':
+      case '.aac':
+      case '.ogg':
+        return Icons.audio_file;
+      case '.pdf':
+        return Icons.picture_as_pdf;
+      case '.doc':
+      case '.docx':
+        return Icons.description;
+      case '.txt':
+        return Icons.text_snippet;
+      case '.zip':
+      case '.rar':
+      case '.7z':
+        return Icons.archive;
+      case '.apk':
+        return Icons.android;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+  Future<void> _openFile(String filePath, BuildContext context) async {
+    try {
+      if (Platform.isAndroid || Platform.isIOS) {
+        final result = await OpenFilex.open(filePath);
+        if (result.type != ResultType.done) {
+          _showSnackBar(context, 'Could not open file: ${result.message}');
+        }
+      } else {
+        // For other platforms, try to open with system default
+        final result = await OpenFilex.open(filePath);
+        if (result.type != ResultType.done) {
+          _showSnackBar(context, 'Could not open file');
+        }
+      }
+    } catch (e) {
+      _showSnackBar(context, 'Error opening file: $e');
+    }
+  }
+
+  Future<void> _openFolder(String folderPath, BuildContext context) async {
+    try {
+      if (Platform.isAndroid) {
+        // For Android, try to open the folder using a file manager intent
+        try {
+          final result = await OpenFilex.open(folderPath);
+          if (result.type != ResultType.done) {
+            // Fallback: try to open the parent directory if it exists
+            final parentDir = Directory(folderPath).parent;
+            if (await parentDir.exists()) {
+              await OpenFilex.open(parentDir.path);
+            } else {
+              _showSnackBar(context, 'Could not open folder location');
+            }
+          }
+        } catch (e) {
+          _showSnackBar(context, 'Could not open folder: File manager not available');
+        }
+      } else if (Platform.isIOS) {
+        // iOS doesn't allow direct folder access, show message
+        _showSnackBar(context, 'Folder access not available on iOS');
+      } else {
+        // For desktop platforms
+        final result = await OpenFilex.open(folderPath);
+        if (result.type != ResultType.done) {
+          _showSnackBar(context, 'Could not open folder');
+        }
+      }
+    } catch (e) {
+      _showSnackBar(context, 'Error opening folder: $e');
+    }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 2),
+      ),
     );
   }
 }
