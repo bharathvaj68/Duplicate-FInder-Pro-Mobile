@@ -14,7 +14,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "flutter run -d linux"
+args = "flutter run -d android"
 
 [[ports]]
 localPort = 5000

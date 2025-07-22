@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as path;
+import 'dart:io';
 import '../blocs/duplicate_finder_bloc.dart';
 import '../blocs/duplicate_finder_event.dart';
 import '../blocs/duplicate_finder_state.dart';
@@ -76,6 +77,9 @@ class DuplicateList extends StatelessWidget {
                             case 'delete':
                               _showDeleteConfirmation(context, filePath);
                               break;
+                            case 'delete_all':
+                              _deleteAllDuplicates(duplicate);
+                              break;
                           }
                         },
                         itemBuilder: (context) => [
@@ -99,6 +103,16 @@ class DuplicateList extends StatelessWidget {
                               ],
                             ),
                           ),
+                          PopupMenuItem(
+                            value: 'delete_all',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_forever, size: 18, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Delete All', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -115,7 +129,7 @@ class DuplicateList extends StatelessWidget {
 
   IconData _getFileIcon(String filePath) {
     final extension = path.extension(filePath).toLowerCase();
-    
+
     switch (extension) {
       case '.jpg':
       case '.jpeg':
@@ -185,5 +199,66 @@ class DuplicateList extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _deleteAllDuplicates(DuplicateFile duplicate) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Duplicate Files'),
+        content: Text('This will keep the oldest file and delete ${duplicate.count - 1} duplicate copies. This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('Delete Duplicates'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Sort files by modification time to keep the oldest
+      List<File> files = duplicate.paths.map((path) => File(path)).toList();
+      List<MapEntry<File, DateTime>> filesWithDates = [];
+
+      for (File file in files) {
+        try {
+          final stat = await file.stat();
+          filesWithDates.add(MapEntry(file, stat.modified));
+        } catch (e) {
+          // If we can't get the date, use current time (will be deleted)
+          filesWithDates.add(MapEntry(file, DateTime.now()));
+        }
+      }
+
+      // Sort by modification date (oldest first)
+      filesWithDates.sort((a, b) => a.value.compareTo(b.value));
+
+      // Keep the oldest file, delete the rest
+      final oldestFile = filesWithDates.first.key;
+      final filesToDelete = filesWithDates.skip(1).map((e) => e.key.path).toList();
+
+      int deletedCount = 0;
+      for (String filePath in filesToDelete) {
+        final success = await _fileService.deleteFile(filePath);
+        if (success) {
+          deletedCount++;
+        }
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kept oldest file, deleted $deletedCount duplicate${deletedCount != 1 ? 's' : ''}')),
+      );
+
+      // Update the duplicate list
+      for (String filePath in filesToDelete) {
+        context.read<DuplicateFinderBloc>().add(DeleteFile(filePath));
+      }
+    }
   }
 }

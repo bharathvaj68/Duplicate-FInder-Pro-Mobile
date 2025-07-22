@@ -92,6 +92,9 @@ class DuplicateFinderBloc extends Bloc<DuplicateFinderEvent, DuplicateFinderStat
         onFileCount: (count) {
           add(UpdateScanProgress(null, count));
         },
+        onDuplicatesFound: (duplicateCount) {
+          add(UpdateScanProgress('Found $duplicateCount duplicate groups...', null));
+        },
       );
 
       // Save scan results to database

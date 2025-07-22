@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
@@ -6,7 +5,7 @@ import 'dart:isolate';
 import 'package:file_picker/file_picker.dart';
 import 'package:crypto/crypto.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' as pathlib;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -94,7 +93,7 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
   Future<void> _checkPermissions() async {
     try {
       bool hasPermissions = await _hasRequiredPermissions();
-      
+
       if (hasPermissions) {
         setState(() {
           _permissionsGranted = true;
@@ -117,12 +116,12 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
     if (Platform.isAndroid) {
       var storageStatus = await Permission.storage.status;
       var manageStorageStatus = await Permission.manageExternalStorage.status;
-      
+
       return storageStatus.isGranted || manageStorageStatus.isGranted;
     } else if (Platform.isIOS) {
       var photosStatus = await Permission.photos.status;
       var mediaLibraryStatus = await Permission.mediaLibrary.status;
-      
+
       return photosStatus.isGranted || mediaLibraryStatus.isGranted;
     }
     return true;
@@ -328,7 +327,7 @@ class FileCheckerRepository {
 
   Future<Database> _initDB(String fileName) async {
     final directory = await getApplicationDocumentsDirectory();
-    final path = join(directory.path, fileName);
+    final path = pathlib.join(directory.path, fileName);
 
     return await openDatabase(
       path,
@@ -422,7 +421,7 @@ class FileCheckerRepository {
       )) {
         if (entity is File) {
           if (extensions.isEmpty ||
-              extensions.contains(extension(entity.path).toLowerCase())) {
+              extensions.contains(pathlib.extension(entity.path).toLowerCase())) {
             files.add(entity);
           }
         }
@@ -1122,8 +1121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icons.filter_list,
                 color: Theme.of(context).colorScheme.primary,
               ),
-              trailing: IconButton(
-                icon: Icon(
+              trailing: IconButton(                icon: Icon(
                   _showExtensionFilter ? Icons.expand_less : Icons.expand_more,
                 ),
                 onPressed: () {
@@ -1415,7 +1413,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  
+
 
   String _formatSize(int bytes) {
     if (bytes < 1024) return '$bytes B';

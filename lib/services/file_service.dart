@@ -154,6 +154,7 @@ class FileService {
     String directoryPath, {
     Function(String)? onProgress,
     Function(int)? onFileCount,
+    Function(int)? onDuplicatesFound,
   }) async {
     try {
       onProgress?.call('Starting scan...');
@@ -234,6 +235,8 @@ class FileService {
               count: hashGroup.length,
             );
             duplicates.add(duplicateFile);
+            // Notify about new duplicate group found
+            onDuplicatesFound?.call(duplicates.length);
           }
         }
       }

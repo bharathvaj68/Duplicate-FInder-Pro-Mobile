@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:open_filex/open_filex.dart';
 import 'dart:io';
-import 'package:path/path.dart' as path;
+import 'package:path/path.dart' as pathlib;
 import '../blocs/duplicate_finder_bloc.dart';
 import '../blocs/duplicate_finder_state.dart';
 import '../services/file_service.dart';
@@ -95,8 +95,8 @@ class ScanSummary extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final duplicate = state.duplicates[index];
                       final firstFilePath = duplicate.paths.first;
-                      final fileName = path.basename(firstFilePath);
-                      final folderPath = path.dirname(firstFilePath);
+                      final fileName = pathlib.basename(firstFilePath);
+                      final folderPath = pathlib.dirname(firstFilePath);
                       
                       return Container(
                         width: 140,
@@ -193,7 +193,7 @@ class ScanSummary extends StatelessWidget {
   }
 
   IconData _getFileIcon(String fileName) {
-    final extension = path.extension(fileName).toLowerCase();
+    final extension = pathlib.extension(fileName).toLowerCase();
     switch (extension) {
       case '.jpg':
       case '.jpeg':
@@ -235,20 +235,12 @@ class ScanSummary extends StatelessWidget {
 
   Future<void> _openFile(String filePath, BuildContext context) async {
     try {
-      if (Platform.isAndroid || Platform.isIOS) {
-        final result = await OpenFilex.open(filePath);
-        if (result.type != ResultType.done) {
-          _showSnackBar(context, 'Could not open file: ${result.message}');
-        }
-      } else {
-        // For other platforms, try to open with system default
-        final result = await OpenFilex.open(filePath);
-        if (result.type != ResultType.done) {
-          _showSnackBar(context, 'Could not open file');
-        }
+      final result = await OpenFilex.open(filePath);
+      if (result.type != ResultType.done) {
+        _showSnackBar(context, 'Could not open file: ${result.message}');
       }
     } catch (e) {
-      _showSnackBar(context, 'Error opening file: $e');
+      _showSnackBar(context, 'Cannot open file: $e');
     }
   }
 
