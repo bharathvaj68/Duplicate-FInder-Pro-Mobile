@@ -11,6 +11,8 @@ import '../services/file_service.dart';
 class ScanSummary extends StatelessWidget {
   final FileService _fileService = FileService();
 
+  ScanSummary({super.key});
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<DuplicateFinderBloc, DuplicateFinderState>(

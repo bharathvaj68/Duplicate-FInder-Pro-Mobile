@@ -5,6 +5,8 @@ import 'package:open_filex/open_filex.dart';
 import '../services/recycle_bin_service.dart';
 
 class RestoredFilesScreen extends StatefulWidget {
+  const RestoredFilesScreen({super.key});
+
   @override
   _RestoredFilesScreenState createState() => _RestoredFilesScreenState();
 }

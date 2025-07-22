@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../services/recycle_bin_service.dart';
 
 class RecycleBinScreen extends StatefulWidget {
+  const RecycleBinScreen({super.key});
+
   @override
   _RecycleBinScreenState createState() => _RecycleBinScreenState();
 }

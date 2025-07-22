@@ -140,7 +140,7 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
                       statuses[Permission.manageExternalStorage]?.isGranted == true;
 
         if (!granted) {
-          _showPermissionDialog();
+          _showPermissionDialog(context);
         } else {
           setState(() {
             _permissionsGranted = true;
