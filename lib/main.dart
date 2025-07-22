@@ -140,7 +140,7 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
                       statuses[Permission.manageExternalStorage]?.isGranted == true;
 
         if (!granted) {
-          _showPermissionDialog();
+          _showPermissionDialog(this.context);
         } else {
           setState(() {
             _permissionsGranted = true;
@@ -937,7 +937,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onPressed: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) => const RecycleBinScreen(),
+                                    builder: (context) => RecycleBinScreen(),
                                   ),
                                 );
                               },
@@ -955,7 +955,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onPressed: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) => const RestoredFilesScreen(),
+                                    builder: (context) => RestoredFilesScreen(),
                                   ),
                                 );
                               },

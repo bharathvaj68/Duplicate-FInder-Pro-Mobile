@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -278,16 +279,9 @@ class FileService {
 
   Future<String> _calculateFileHash(File file) async {
     try {
-      var digest = AccumulatorSink<Digest>();
-      var output = md5.startChunkedConversion(digest);
-      
-      var stream = file.openRead();
-      await for (var chunk in stream) {
-        output.add(chunk);
-      }
-      output.close();
-      
-      return digest.events.single.toString();
+      final bytes = await file.readAsBytes();
+      final digest = md5.convert(bytes);
+      return digest.toString();
     } catch (e) {
       print('Error calculating hash for ${file.path}: $e');
       rethrow;
