@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart';
 import '../models/duplicate_file.dart';
 import 'recycle_bin_service.dart';
 
@@ -15,7 +16,7 @@ class FileService {
     
     try {
       // Check permissions first for mobile platforms
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         var status = await Permission.storage.status;
         var manageStatus = await Permission.manageExternalStorage.status;
         
@@ -126,6 +127,14 @@ class FileService {
           }
         } catch (e) {
           print('Error getting directories: $e');
+        }
+      } else if (kIsWeb) {
+        // For web, we can only work with selected directories
+        try {
+          var documentsDir = await getApplicationDocumentsDirectory();
+          directories.add(documentsDir.path);
+        } catch (e) {
+          print('Error getting web directories: $e');
         }
       }
     } catch (e) {
@@ -299,12 +308,17 @@ class FileService {
 
   Future<bool> deleteFile(String filePath) async {
     try {
-      // For Android, move to recycle bin instead of permanent deletion
-      if (Platform.isAndroid) {
+      if (kIsWeb) {
+        // Web doesn't support file deletion
+        throw Exception('File deletion not supported on web');
+      }
+
+      // For mobile platforms, move to recycle bin instead of permanent deletion
+      if (Platform.isAndroid || Platform.isIOS) {
         final recycleBinService = RecycleBinService();
         return await recycleBinService.moveToRecycleBin(filePath);
       } else {
-        // For other platforms, delete directly
+        // For desktop platforms, delete directly or move to system trash
         var file = File(filePath);
         if (await file.exists()) {
           await file.delete();

@@ -14,7 +14,25 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "flutter run -d android"
+args = "flutter run -d linux"
+
+[[workflows.workflow]]
+name = "Run on Web"
+author = 15580737
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flutter run -d web-server --web-port=5000 --web-hostname=0.0.0.0"
+
+[[workflows.workflow]]
+name = "Build for Web"
+author = 15580737
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "flutter build web"
 
 [[ports]]
 localPort = 5000

@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'services/recycle_bin_service.dart';
 import 'screens/recycle_bin_screen.dart';
 import 'screens/restored_files_screen.dart';
@@ -68,9 +69,14 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       home: BlocProvider(
         create: (context) => ScanBloc(FileCheckerRepository()),
-        child: Platform.isAndroid || Platform.isIOS ? PermissionWrapper() : SplashScreenWrapper(),
+        child: _needsPermissions() ? PermissionWrapper() : SplashScreenWrapper(),
       ),
     );
+  }
+
+  static bool _needsPermissions() {
+    if (kIsWeb) return false;
+    return Platform.isAndroid || Platform.isIOS;
   }
 }
 
@@ -113,6 +119,8 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
   }
 
   Future<bool> _hasRequiredPermissions() async {
+    if (kIsWeb) return true;
+    
     if (Platform.isAndroid) {
       var storageStatus = await Permission.storage.status;
       var manageStorageStatus = await Permission.manageExternalStorage.status;
@@ -123,12 +131,22 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
       var mediaLibraryStatus = await Permission.mediaLibrary.status;
 
       return photosStatus.isGranted || mediaLibraryStatus.isGranted;
+    } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      // Desktop platforms don't need special permissions for file access
+      return true;
     }
     return true;
   }
 
   Future<void> _requestPermissions() async {
     try {
+      if (kIsWeb) {
+        setState(() {
+          _permissionsGranted = true;
+        });
+        return;
+      }
+
       if (Platform.isAndroid) {
         Map<Permission, PermissionStatus> statuses = await [
           Permission.storage,
@@ -161,6 +179,11 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
             _permissionsGranted = true;
           });
         }
+      } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        // Desktop platforms have direct file system access
+        setState(() {
+          _permissionsGranted = true;
+        });
       } else {
         setState(() {
           _permissionsGranted = true;
@@ -168,21 +191,34 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
       }
     } catch (e) {
       print('Error requesting permissions: $e');
+      // On desktop platforms, still allow the app to work
+      if (!Platform.isAndroid && !Platform.isIOS) {
+        setState(() {
+          _permissionsGranted = true;
+        });
+      }
     }
   }
 
   void _showPermissionDialog(BuildContext context) {
+    String title = 'Permission Required';
+    String content = 'This app needs permission to scan for duplicate files.';
+    
+    if (Platform.isIOS) {
+      title = 'Photos Permission Required';
+      content = 'This app needs photos permission to scan for duplicate files. Please grant photos permission in the app settings.';
+    } else if (Platform.isAndroid) {
+      title = 'Storage Permission Required';
+      content = 'This app needs storage permission to scan for duplicate files. Please grant storage permission in the app settings.';
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(Platform.isIOS ? 'Photos Permission Required' : 'Storage Permission Required'),
-          content: Text(
-            Platform.isIOS 
-              ? 'This app needs photos permission to scan for duplicate files. Please grant photos permission in the app settings.'
-              : 'This app needs storage permission to scan for duplicate files. Please grant storage permission in the app settings.',
-          ),
+          title: Text(title),
+          content: Text(content),
           actions: [
             TextButton(
               onPressed: () {
@@ -190,15 +226,16 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
               },
               child: Text('Cancel'),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await openAppSettings();
-                await Future.delayed(Duration(seconds: 1));
-                _checkPermissions();
-              },
-              child: Text('Open Settings'),
-            ),
+            if (Platform.isAndroid || Platform.isIOS)
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await openAppSettings();
+                  await Future.delayed(Duration(seconds: 1));
+                  _checkPermissions();
+                },
+                child: Text('Open Settings'),
+              ),
           ],
         );
       },
@@ -612,13 +649,14 @@ class ScanBloc extends Bloc<ScanEvent, ScanState> {
     List<File> files = [];
 
     try {
-      if (Platform.isAndroid) {
+      // Check permissions only for mobile platforms
+      if (!kIsWeb && Platform.isAndroid) {
         final status = await Permission.manageExternalStorage.request();
         if (!status.isGranted) {
           emit(state.copyWith(status: ScanStatus.error, error: 'Storage permission denied.'));
           return;
         }
-      } else if (Platform.isIOS) {
+      } else if (!kIsWeb && Platform.isIOS) {
         final status = await Permission.photos.request();
         if (!status.isGranted) {
           emit(state.copyWith(status: ScanStatus.error, error: 'Photos permission denied.'));
@@ -1632,6 +1670,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openFolder(String folderPath, BuildContext context) async {
     try {
+      if (kIsWeb) {
+        _showSnackBar(context, 'Folder access not available on web');
+        return;
+      }
+
       if (Platform.isAndroid) {
         // For Android, try to open the folder using a file manager intent
         try {
@@ -1651,8 +1694,25 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (Platform.isIOS) {
         // iOS doesn't allow direct folder access, show message
         _showSnackBar(context, 'Folder access not available on iOS');
-      } else {
+      } else if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
         // For desktop platforms
+        try {
+          final result = await OpenFilex.open(folderPath);
+          if (result.type != ResultType.done) {
+            // Try alternative methods for desktop
+            if (Platform.isWindows) {
+              await Process.run('explorer', [folderPath]);
+            } else if (Platform.isMacOS) {
+              await Process.run('open', [folderPath]);
+            } else if (Platform.isLinux) {
+              await Process.run('xdg-open', [folderPath]);
+            }
+          }
+        } catch (e) {
+          _showSnackBar(context, 'Could not open folder: $e');
+        }
+      } else {
+        // For other platforms
         final result = await OpenFilex.open(folderPath);
         if (result.type != ResultType.done) {
           _showSnackBar(context, 'Could not open folder');
