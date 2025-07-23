@@ -285,9 +285,6 @@ class FileService {
       var bytes = await file.readAsBytes();
       var digest = md5.convert(bytes);
       return digest.toString();
-      final bytes = await file.readAsBytes();
-      final digest = md5.convert(bytes);
-      return digest.toString();
     } catch (e) {
       print('Error calculating hash for ${file.path}: $e');
       rethrow;
