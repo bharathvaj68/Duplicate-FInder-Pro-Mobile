@@ -313,29 +313,36 @@ class ScanSummary extends StatelessWidget {
   Future<void> _openFolder(String folderPath, BuildContext context) async {
     try {
       if (Platform.isAndroid) {
-        // For Android, try to open the folder using a file manager intent
+        // For Android, use android_intent_plus to open specific folder
         try {
-          final result = await OpenFilex.open(folderPath);
-          if (result.type != ResultType.done) {
-            // Fallback: try to open the parent directory if it exists
-            final parentDir = Directory(folderPath).parent;
-            if (await parentDir.exists()) {
-              await OpenFilex.open(parentDir.path);
-            } else {
-              _showSnackBar(context, 'Could not open folder location');
+          // First check if the folder exists
+          final directory = Directory(folderPath);
+          if (await directory.exists()) {
+            // Try to open with file manager intent
+            final result = await OpenFilex.open(folderPath);
+            if (result.type != ResultType.done) {
+              // Fallback: show folder path in snackbar
+              _showSnackBar(context, 'Folder: $folderPath');
             }
+          } else {
+            _showSnackBar(context, 'Folder does not exist: $folderPath');
           }
         } catch (e) {
-          _showSnackBar(context, 'Could not open folder: File manager not available');
+          _showSnackBar(context, 'Folder: $folderPath');
         }
       } else if (Platform.isIOS) {
         // iOS doesn't allow direct folder access, show message
         _showSnackBar(context, 'Folder access not available on iOS');
       } else {
         // For desktop platforms
-        final result = await OpenFilex.open(folderPath);
-        if (result.type != ResultType.done) {
-          _showSnackBar(context, 'Could not open folder');
+        final directory = Directory(folderPath);
+        if (await directory.exists()) {
+          final result = await OpenFilex.open(folderPath);
+          if (result.type != ResultType.done) {
+            _showSnackBar(context, 'Could not open folder');
+          }
+        } else {
+          _showSnackBar(context, 'Folder does not exist');
         }
       }
     } catch (e) {
