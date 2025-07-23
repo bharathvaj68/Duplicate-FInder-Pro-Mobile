@@ -183,6 +183,72 @@ class ScanSummary extends StatelessWidget {
                     },
                   ),
                 ),
+                SizedBox(height: 16),
+                Text(
+                  'All Duplicate Files',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                SizedBox(height: 8),
+                Container(
+                  height: 300,
+                  child: ListView.builder(
+                    itemCount: state.duplicates.length,
+                    itemBuilder: (context, index) {
+                      final duplicate = state.duplicates[index];
+                      return Card(
+                        margin: EdgeInsets.only(bottom: 8),
+                        elevation: 2,
+                        child: ExpansionTile(
+                          leading: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              _getFileIcon(pathlib.basename(duplicate.paths.first)),
+                              color: Colors.red,
+                              size: 24,
+                            ),
+                          ),
+                          title: Text(
+                            pathlib.basename(duplicate.paths.first),
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            '${duplicate.count} duplicates • ${_fileService.formatFileSize(duplicate.size)}',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                          children: duplicate.paths.map((filePath) {
+                            final fileName = pathlib.basename(filePath);
+                            final folderPath = pathlib.dirname(filePath);
+                            
+                            return ListTile(
+                              contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                              leading: Icon(Icons.insert_drive_file, size: 20),
+                              title: Text(
+                                fileName,
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              subtitle: Text(
+                                folderPath,
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: IconButton(
+                                icon: Icon(Icons.folder_open, color: Colors.orange),
+                                onPressed: () => _openFolder(folderPath, context),
+                                tooltip: 'Open folder',
+                              ),
+                              onTap: () => _openFile(filePath, context),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ],
           );
