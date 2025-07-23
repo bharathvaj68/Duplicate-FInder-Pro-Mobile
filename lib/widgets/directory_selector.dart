@@ -138,9 +138,9 @@ class DirectorySelector extends StatelessWidget {
               ),
               SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: isScanning ? null : () {
+                onPressed: isScanning || selectedDirectory == null ? null : () {
                   context.read<DuplicateFinderBloc>().add(
-                    StartScan(selectedDirectory),
+                    StartScan(selectedDirectory!),
                   );
                 },
                 icon: isScanning 

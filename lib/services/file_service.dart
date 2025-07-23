@@ -281,16 +281,9 @@ class FileService {
 
   Future<String> _calculateFileHash(File file) async {
     try {
-      var digest = AccumulatorSink<Digest>();
-      var output = md5.startChunkedConversion(digest);
-      
-      var stream = file.openRead();
-      await for (var chunk in stream) {
-        output.add(chunk);
-      }
-      output.close();
-      
-      return digest.events.single.toString();
+      var bytes = await file.readAsBytes();
+      var digest = md5.convert(bytes);
+      return digest.toString();
     } catch (e) {
       print('Error calculating hash for ${file.path}: $e');
       rethrow;
