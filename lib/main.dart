@@ -1606,14 +1606,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFileListTile(BuildContext context, FileInfo file) {
     return ListTile(
-      onTap: () async {
-        final uri = Uri.file(file.path);
-        try {
-          await launchUrl(uri);
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open file: $e')));
-        }
-      },
+      onTap: () => _openFile(file.path, context),
       title: Text(file.name),
       subtitle: Text(
         '${_formatSize(file.size)} • ${file.modified.toString().split('.').first}',
@@ -1621,18 +1614,60 @@ class _HomeScreenState extends State<HomeScreen> {
       leading: const Icon(Icons.insert_drive_file),
       trailing: IconButton(
         icon: const Icon(Icons.folder_open),
-        onPressed: () async {
-          final directoryUri = Uri.file(
-            file.path.replaceAll(RegExp(r'[^/\\]+$'), ''),
-          );
-          try {
-            await launchUrl(directoryUri);
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Could not open folder: $e')),
-            );
+        onPressed: () => _openFolder(pathlib.dirname(file.path), context),
+      ),
+    );
+  }
+
+  Future<void> _openFile(String filePath, BuildContext context) async {
+    try {
+      final result = await OpenFilex.open(filePath);
+      if (result.type != ResultType.done) {
+        _showSnackBar(context, 'Could not open file: ${result.message}');
+      }
+    } catch (e) {
+      _showSnackBar(context, 'Cannot open file: $e');
+    }
+  }
+
+  Future<void> _openFolder(String folderPath, BuildContext context) async {
+    try {
+      if (Platform.isAndroid) {
+        // For Android, try to open the folder using a file manager intent
+        try {
+          final result = await OpenFilex.open(folderPath);
+          if (result.type != ResultType.done) {
+            // Fallback: try to open the parent directory if it exists
+            final parentDir = Directory(folderPath).parent;
+            if (await parentDir.exists()) {
+              await OpenFilex.open(parentDir.path);
+            } else {
+              _showSnackBar(context, 'Could not open folder location');
+            }
           }
-        },
+        } catch (e) {
+          _showSnackBar(context, 'Could not open folder: File manager not available');
+        }
+      } else if (Platform.isIOS) {
+        // iOS doesn't allow direct folder access, show message
+        _showSnackBar(context, 'Folder access not available on iOS');
+      } else {
+        // For desktop platforms
+        final result = await OpenFilex.open(folderPath);
+        if (result.type != ResultType.done) {
+          _showSnackBar(context, 'Could not open folder');
+        }
+      }
+    } catch (e) {
+      _showSnackBar(context, 'Error opening folder: $e');
+    }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 2),
       ),
     );
   }
