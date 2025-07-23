@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -283,6 +284,9 @@ class FileService {
     try {
       var bytes = await file.readAsBytes();
       var digest = md5.convert(bytes);
+      return digest.toString();
+      final bytes = await file.readAsBytes();
+      final digest = md5.convert(bytes);
       return digest.toString();
     } catch (e) {
       print('Error calculating hash for ${file.path}: $e');

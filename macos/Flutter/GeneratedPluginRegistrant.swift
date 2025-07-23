@@ -11,7 +11,11 @@ import file_picker
 import path_provider_foundation
 import screen_retriever
 import share_plus
+<<<<<<< HEAD
 import sqflite_darwin
+=======
+import sqflite
+>>>>>>> d6cd3b25b679fc46a44d0bc20a4f9c5ba9985075
 import url_launcher_macos
 import window_manager
 
