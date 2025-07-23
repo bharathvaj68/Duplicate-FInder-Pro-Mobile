@@ -313,21 +313,74 @@ class FileService {
         throw Exception('File deletion not supported on web');
       }
 
-      // For mobile platforms, move to recycle bin instead of permanent deletion
-      if (Platform.isAndroid || Platform.isIOS) {
-        final recycleBinService = RecycleBinService();
-        return await recycleBinService.moveToRecycleBin(filePath);
-      } else {
-        // For desktop platforms, delete directly or move to system trash
-        var file = File(filePath);
-        if (await file.exists()) {
-          await file.delete();
-          return true;
-        }
-        return false;
-      }
+      final recycleBinService = RecycleBinService();
+      return await recycleBinService.moveToRecycleBin(filePath);
     } catch (e) {
       print('Error deleting file $filePath: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteDuplicateGroup(DuplicateFile duplicateGroup, {bool keepOldest = true}) async {
+    try {
+      if (kIsWeb) {
+        throw Exception('File deletion not supported on web');
+      }
+
+      if (duplicateGroup.paths.length <= 1) return false;
+
+      // Map each file to its last modified date (safely)
+      final fileDateMap = <String, DateTime>{};
+      for (final filePath in duplicateGroup.paths) {
+        try {
+          final file = File(filePath);
+          if (await file.exists()) {
+            fileDateMap[filePath] = await file.lastModified();
+          }
+        } catch (e) {
+          print('Error getting file date for $filePath: $e');
+          continue; // Skip unreadable or missing files
+        }
+      }
+
+      if (fileDateMap.isEmpty) return false;
+
+      String? fileToKeep;
+      if (keepOldest) {
+        // Find the oldest file to keep
+        fileToKeep = fileDateMap.entries
+            .reduce((a, b) => a.value.isBefore(b.value) ? a : b)
+            .key;
+      } else {
+        // Find the newest file to keep
+        fileToKeep = fileDateMap.entries
+            .reduce((a, b) => a.value.isAfter(b.value) ? a : b)
+            .key;
+      }
+
+      final recycleBinService = RecycleBinService();
+      var deletedCount = 0;
+
+      // Delete all files except the one to keep
+      for (final filePath in duplicateGroup.paths) {
+        if (filePath == fileToKeep) continue;
+
+        final file = File(filePath);
+        if (await file.exists()) {
+          try {
+            final success = await recycleBinService.moveToRecycleBin(filePath);
+            if (success) {
+              deletedCount++;
+            }
+          } catch (e) {
+            print('Error moving file to recycle bin $filePath: $e');
+          }
+        }
+      }
+
+      return deletedCount > 0;
+    } catch (e) {
+      print('Error deleting duplicate group: $e');
       return false;
     }
   }

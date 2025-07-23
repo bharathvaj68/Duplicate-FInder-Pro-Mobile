@@ -49,7 +49,18 @@ class _RestoredFilesScreenState extends State<RestoredFilesScreen> {
 
   Future<void> _openFile(RestoredFileItem file) async {
     try {
-      await OpenFilex.open(file.currentPath);
+      if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+        final result = await OpenFilex.open(file.currentPath);
+        if (result.type != ResultType.done) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Cannot open file: ${result.message}')),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File opening not supported on this platform')),
+        );
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Cannot open file: $e')),

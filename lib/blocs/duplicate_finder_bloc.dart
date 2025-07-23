@@ -17,6 +17,7 @@ class DuplicateFinderBloc extends Bloc<DuplicateFinderEvent, DuplicateFinderStat
     on<SelectDirectory>(_onSelectDirectory);
     on<StartScan>(_onStartScan);
     on<DeleteFile>(_onDeleteFile);
+    on<DeleteDuplicateGroup>(_onDeleteDuplicateGroup);
     on<UpdateScanProgress>(_onUpdateScanProgress);
   }
 
@@ -162,6 +163,37 @@ class DuplicateFinderBloc extends Bloc<DuplicateFinderEvent, DuplicateFinderStat
       } catch (e) {
         // Handle error but don't change state
         print('Error deleting file: $e');
+      }
+    }
+  }
+
+  Future<void> _onDeleteDuplicateGroup(
+    DeleteDuplicateGroup event,
+    Emitter<DuplicateFinderState> emit,
+  ) async {
+    if (state is DuplicateFinderCompleted) {
+      final currentState = state as DuplicateFinderCompleted;
+      
+      try {
+        final success = await fileService.deleteDuplicateGroup(
+          event.duplicateGroup,
+          keepOldest: event.keepOldest,
+        );
+        
+        if (success) {
+          // Remove the deleted group from the duplicates list
+          final updatedDuplicates = currentState.duplicates
+              .where((duplicate) => duplicate.hash != event.duplicateGroup.hash)
+              .toList();
+
+          emit(DuplicateFinderCompleted(
+            availableDirectories: currentState.availableDirectories,
+            selectedDirectory: currentState.selectedDirectory,
+            duplicates: updatedDuplicates,
+          ));
+        }
+      } catch (e) {
+        print('Error deleting duplicate group: $e');
       }
     }
   }
