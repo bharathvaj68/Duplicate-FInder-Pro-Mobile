@@ -153,7 +153,7 @@ class DirectorySelector extends StatelessWidget {
                       ),
                     )
                   : Icon(Icons.search),
-                label: Text(isScanning ? 'Scanning...' : 'Start Scan'),
+                label: Text(isScanning ? 'Scanning...'   : 'Start Scan'),
               ),
             ],
           ],

@@ -974,7 +974,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onPressed: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) => const RecycleBinScreen(),
+                                    builder: (context) => RecycleBinScreen(),
                                   ),
                                 );
                               },
@@ -992,7 +992,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onPressed: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (context) => const RestoredFilesScreen(),
+                                    builder: (context) => RestoredFilesScreen(),
                                   ),
                                 );
                               },
