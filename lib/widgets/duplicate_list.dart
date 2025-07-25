@@ -6,6 +6,7 @@ import 'dart:io';
 import '../blocs/duplicate_finder_bloc.dart';
 import '../blocs/duplicate_finder_event.dart';
 import '../blocs/duplicate_finder_state.dart';
+import '../models/duplicate_file.dart';
 import '../services/file_service.dart';
 
 class DuplicateList extends StatelessWidget {
@@ -78,7 +79,7 @@ class DuplicateList extends StatelessWidget {
                               _showDeleteConfirmation(context, filePath);
                               break;
                             case 'delete_all':
-                              _deleteAllDuplicates(duplicate);
+                              _deleteAllDuplicates(duplicate, context);
                               break;
                           }
                         },
@@ -201,7 +202,7 @@ class DuplicateList extends StatelessWidget {
     );
   }
 
-  Future<void> _deleteAllDuplicates(DuplicateFile duplicate) async {
+  Future<void> _deleteAllDuplicates(DuplicateFile duplicate, BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

@@ -5,7 +5,11 @@ import 'dart:io';
 import 'package:path/path.dart' as pathlib;
 import '../blocs/duplicate_finder_bloc.dart';
 import '../blocs/duplicate_finder_state.dart';
+import '../blocs/duplicate_finder_event.dart';
 import '../services/file_service.dart';
+import '../models/duplicate_file.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
 
 class ScanSummary extends StatelessWidget {
   final FileService _fileService = FileService();
@@ -364,6 +368,36 @@ class ScanSummary extends StatelessWidget {
     }
   }
 
+  Future<void> _deleteAllExceptFirst(DuplicateFile duplicate, BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Keep First File'),
+        content: Text('Keep the first file and delete ${duplicate.count - 1} others? This action moves duplicates to recycle bin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: Text('Keep First'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Delete all files except the first one
+      for (int i = 1; i < duplicate.paths.length; i++) {
+        context.read<DuplicateFinderBloc>().add(DeleteFile(duplicate.paths[i]));
+      }
+
+      _showSnackBar(context, '${duplicate.count - 1} duplicate files moved to recycle bin, first file kept');
+    }
+  }
+
   Future<void> _deleteAllFiles(DuplicateFile duplicate, BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -446,53 +480,47 @@ class ScanSummary extends StatelessWidget {
   }
 
   Future<void> _openFolder(String folderPath, BuildContext context) async {
-    try {
-      if (Platform.isAndroid) {
-        // For Android, use android_intent_plus to open specific folder
-        try {
-          // First check if the folder exists
-          final directory = Directory(folderPath);
-          if (await directory.exists()) {
-            // Try to open with file manager intent
-            final result = await OpenFilex.open(folderPath);
-            if (result.type != ResultType.done) {
-              // Fallback: show folder path in snackbar
-              _showSnackBar(context, 'Folder: $folderPath');
-            }
-          } else {
-            _showSnackBar(context, 'Folder does not exist: $folderPath');
-          }
-        } catch (e) {
-          _showSnackBar(context, 'Folder: $folderPath');
-        }
-      } else if (Platform.isIOS) {
-        // iOS doesn't allow direct folder access, show message
-        _showSnackBar(context, 'Folder access not available on iOS');
-      } else {
-        // For desktop platforms
-        final directory = Directory(folderPath);
-        if (await directory.exists()) {
-          final result = await OpenFilex.open(folderPath);
-          if (result.type != ResultType.done) {
-            _showSnackBar(context, 'Could not open folder');
-          }
-        } else {
-          _showSnackBar(context, 'Folder does not exist');
-        }
-      }
-    } catch (e) {
-      _showSnackBar(context, 'Error opening folder: $e');
+  try {
+    final directory = Directory(folderPath);
+    if (!await directory.exists()) {
+      _showSnackBar(context, 'Folder does not exist: $folderPath');
+      return;
     }
-  }
 
-  void _showSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    if (Platform.isAndroid) {
+      final uri = Uri.file(folderPath);
+      final intent = AndroidIntent(
+        action: 'android.intent.action.VIEW',
+        data: uri.toString(),
+        type: "*/*",
+        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+      );
+      await intent.launch();
+    } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      // Use native file explorer on desktop
+      await Process.run(
+        Platform.isWindows
+            ? 'explorer'
+            : Platform.isMacOS
+                ? 'open'
+                : 'xdg-open',
+        [folderPath],
+      );
+    } else if (Platform.isIOS) {
+      _showSnackBar(context, 'Folder opening is not supported on iOS');
+    } else {
+      _showSnackBar(context, 'Unsupported platform');
+    }
+  } catch (e) {
+    _showSnackBar(context, 'Error opening folder: $e');
   }
+}
+
+void _showSnackBar(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message)),
+  );
+} 
 }
 
 class _SummaryCard extends StatelessWidget {

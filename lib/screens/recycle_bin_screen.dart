@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
 import '../services/recycle_bin_service.dart';
 
 class RecycleBinScreen extends StatefulWidget {
@@ -30,7 +30,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
     try {
       final items = await _recycleBinService.getRecycleBinItems();
       final size = await _recycleBinService.getRecycleBinSize();
-      
+
       setState(() {
         _recycleBinItems = items;
         _totalSize = size;
@@ -49,7 +49,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
   Future<void> _restoreFile(RecycleBinItem item) async {
     try {
       final success = await _recycleBinService.restoreFromRecycleBin(item.id);
-      
+
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${item.originalName} restored successfully')),
@@ -72,7 +72,8 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Permanently Delete'),
-        content: Text('Are you sure you want to permanently delete "${item.originalName}"? This action cannot be undone.'),
+        content: Text(
+            'Are you sure you want to permanently delete "${item.originalName}"? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -90,7 +91,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
     if (confirmed == true) {
       try {
         final success = await _recycleBinService.permanentlyDelete(item.id);
-        
+
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('${item.originalName} permanently deleted')),
@@ -116,7 +117,8 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Empty Recycle Bin'),
-        content: Text('Are you sure you want to permanently delete all ${_recycleBinItems.length} items? This action cannot be undone.'),
+        content: Text(
+            'Are you sure you want to permanently delete all ${_recycleBinItems.length} items? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -169,14 +171,14 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
           ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // Summary Card
                 Card(
                   margin: EdgeInsets.all(16),
                   child: Padding(
                     padding: EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Icon(Icons.delete_outline, size: 40, color: Colors.grey[600]),
+                        Icon(Icons.delete_outline,
+                            size: 40, color: Colors.grey[600]),
                         SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -188,9 +190,10 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                               ),
                               Text(
                                 _recycleBinService.formatFileSize(_totalSize),
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Colors.grey[600],
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(color: Colors.grey[600]),
                               ),
                             ],
                           ),
@@ -199,32 +202,29 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                     ),
                   ),
                 ),
-                
-                // Items List
                 Expanded(
                   child: _recycleBinItems.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                Icons.delete_outline,
-                                size: 80,
-                                color: Colors.grey[400],
-                              ),
+                              Icon(Icons.delete_outline,
+                                  size: 80, color: Colors.grey[400]),
                               SizedBox(height: 16),
                               Text(
                                 'Recycle Bin is Empty',
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: Colors.grey[600],
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineSmall
+                                    ?.copyWith(color: Colors.grey[600]),
                               ),
                               SizedBox(height: 8),
                               Text(
                                 'Deleted files will appear here',
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Colors.grey[500],
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(color: Colors.grey[500]),
                               ),
                             ],
                           ),
@@ -234,11 +234,13 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                           itemCount: _recycleBinItems.length,
                           itemBuilder: (context, index) {
                             final item = _recycleBinItems[index];
-                            final formattedDate = DateFormat('MMM dd, yyyy HH:mm').format(item.deletedAt);
-                            
+                            final formattedDate = DateFormat('MMM dd, yyyy HH:mm')
+                                .format(item.deletedAt);
+
                             return Card(
                               child: ListTile(
-                                leading: Icon(Icons.insert_drive_file, color: Colors.grey[600]),
+                                leading: Icon(Icons.insert_drive_file,
+                                    color: Colors.grey[600]),
                                 title: Text(
                                   item.originalName,
                                   style: TextStyle(fontWeight: FontWeight.w500),
@@ -248,20 +250,33 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                                   children: [
                                     Text(
                                       'Original: ${item.originalPath}',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey[600]),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
                                       'Deleted: $formattedDate',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey[600]),
                                     ),
                                     Text(
                                       _recycleBinService.formatFileSize(item.size),
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey[600]),
                                     ),
                                   ],
                                 ),
+                                onTap: () async {
+                                  final result = await OpenFilex.open(item.currentPath);
+                                  if (result.type != ResultType.done) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text(
+                                              'Could not open file: ${result.message}')),
+                                    );
+                                  }
+                                },
                                 trailing: PopupMenuButton(
                                   itemBuilder: (context) => [
                                     PopupMenuItem(
@@ -278,9 +293,11 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                                       value: 'delete',
                                       child: Row(
                                         children: [
-                                          Icon(Icons.delete_forever, size: 20, color: Colors.red),
+                                          Icon(Icons.delete_forever,
+                                              size: 20, color: Colors.red),
                                           SizedBox(width: 8),
-                                          Text('Delete Forever', style: TextStyle(color: Colors.red)),
+                                          Text('Delete Forever',
+                                              style: TextStyle(color: Colors.red)),
                                         ],
                                       ),
                                     ),

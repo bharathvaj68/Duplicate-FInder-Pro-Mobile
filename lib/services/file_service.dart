@@ -10,16 +10,17 @@ import 'recycle_bin_service.dart';
 
 class FileService {
   static const int _chunkSize = 8192; // 8KB chunks for reading files
+  final RecycleBinService _recycleBinService = RecycleBinService();
 
   Future<List<String>> getAvailableDirectories() async {
     List<String> directories = [];
-    
+
     try {
       // Check permissions first for mobile platforms
       if (!kIsWeb && Platform.isAndroid) {
         var status = await Permission.storage.status;
         var manageStatus = await Permission.manageExternalStorage.status;
-        
+
         if (!status.isGranted && !manageStatus.isGranted) {
           throw Exception('Storage permission not granted');
         }
@@ -33,7 +34,7 @@ class FileService {
           if (await externalDir.exists()) {
             directories.add(externalDir.path);
           }
-          
+
           // Common user directories
           var commonDirs = [
             '/storage/emulated/0/Download',
@@ -44,7 +45,7 @@ class FileService {
             '/storage/emulated/0/Music',
             '/storage/emulated/0/Movies',
           ];
-          
+
           for (String dirPath in commonDirs) {
             var dir = Directory(dirPath);
             if (await dir.exists()) {
@@ -54,12 +55,12 @@ class FileService {
         } catch (e) {
           print('Error accessing external storage: $e');
         }
-        
+
         // App-specific directories (always accessible)
         try {
           var appDir = await getApplicationDocumentsDirectory();
           directories.add(appDir.path);
-          
+
           var externalAppDir = await getExternalStorageDirectory();
           if (externalAppDir != null) {
             directories.add(externalAppDir.path);
@@ -72,15 +73,15 @@ class FileService {
         try {
           var documentsDir = await getApplicationDocumentsDirectory();
           directories.add(documentsDir.path);
-          
+
           // Try to get other iOS directories
           var supportDir = await getApplicationSupportDirectory();
           directories.add(supportDir.path);
-          
+
           // Library directory
           var libraryDir = await getLibraryDirectory();
           directories.add(libraryDir.path);
-          
+
         } catch (e) {
           print('Error getting iOS directories: $e');
         }
@@ -89,7 +90,7 @@ class FileService {
         try {
           var documentsDir = await getApplicationDocumentsDirectory();
           directories.add(documentsDir.path);
-          
+
           if (Platform.isMacOS || Platform.isLinux) {
             var homeDir = Platform.environment['HOME'];
             if (homeDir != null) {
@@ -103,13 +104,13 @@ class FileService {
                 path.join(homeDir, 'Videos'),
                 path.join(homeDir, 'Music'),
               ];
-              
+
               for (String dirPath in commonLinuxDirs) {
                 if (await Directory(dirPath).exists()) {
                   directories.add(dirPath);
                 }
               }
-              
+
               // Add current workspace directory for Replit
               if (Platform.isLinux) {
                 var workspaceDir = Directory.current.path;
@@ -141,11 +142,11 @@ class FileService {
       print('Error in getAvailableDirectories: $e');
       rethrow;
     }
-    
+
     // Remove duplicates and non-existent directories
     var uniqueDirs = directories.toSet().toList();
     var existingDirs = <String>[];
-    
+
     for (String dir in uniqueDirs) {
       try {
         if (await Directory(dir).exists()) {
@@ -155,7 +156,7 @@ class FileService {
         print('Error checking directory $dir: $e');
       }
     }
-    
+
     return existingDirs;
   }
 
@@ -167,7 +168,7 @@ class FileService {
   }) async {
     try {
       onProgress?.call('Starting scan...');
-      
+
       // Check if directory exists and is accessible
       var directory = Directory(directoryPath);
       if (!await directory.exists()) {
@@ -178,7 +179,7 @@ class FileService {
       onProgress?.call('Finding files...');
       var allFiles = await _getAllFiles(directory);
       onFileCount?.call(allFiles.length);
-      
+
       if (allFiles.isEmpty) {
         return [];
       }
@@ -186,12 +187,12 @@ class FileService {
       // Group files by size first (quick filter)
       onProgress?.call('Grouping files by size...');
       var sizeGroups = <int, List<File>>{};
-      
+
       for (var file in allFiles) {
         try {
           var stat = await file.stat();
           var size = stat.size;
-          
+
           if (size > 0) { // Skip empty files
             sizeGroups.putIfAbsent(size, () => []).add(file);
           }
@@ -216,14 +217,14 @@ class FileService {
 
       for (var group in duplicateGroups) {
         onProgress?.call('Processing group of ${group.length} files...');
-        
+
         var hashGroups = <String, List<File>>{};
-        
+
         for (var file in group) {
           try {
             var hash = await _calculateFileHash(file);
             hashGroups.putIfAbsent(hash, () => []).add(file);
-            
+
             processedFiles++;
             if (processedFiles % 10 == 0) {
               onProgress?.call('Processed $processedFiles of $totalFiles files...');
@@ -252,7 +253,7 @@ class FileService {
 
       onProgress?.call('Scan completed. Found ${duplicates.length} duplicate groups.');
       return duplicates;
-      
+
     } catch (e) {
       print('Error in scanForDuplicates: $e');
       rethrow;
@@ -261,7 +262,7 @@ class FileService {
 
   Future<List<File>> _getAllFiles(Directory directory) async {
     var files = <File>[];
-    
+
     try {
       await for (var entity in directory.list(recursive: true, followLinks: false)) {
         try {
@@ -284,22 +285,15 @@ class FileService {
       }
       rethrow;
     }
-    
+
     return files;
   }
 
   Future<String> _calculateFileHash(File file) async {
     try {
-      var digest = AccumulatorSink<Digest>();
-      var output = md5.startChunkedConversion(digest);
-      
-      var stream = file.openRead();
-      await for (var chunk in stream) {
-        output.add(chunk);
-      }
-      output.close();
-      
-      return digest.events.single.toString();
+      var bytes = await file.readAsBytes();
+      var digest = md5.convert(bytes);
+      return digest.toString();
     } catch (e) {
       print('Error calculating hash for ${file.path}: $e');
       rethrow;
@@ -323,67 +317,114 @@ class FileService {
 
   Future<bool> deleteDuplicateGroup(DuplicateFile duplicateGroup, {bool keepOldest = true}) async {
     try {
-      if (kIsWeb) {
-        throw Exception('File deletion not supported on web');
-      }
-
-      if (duplicateGroup.paths.length <= 1) return false;
-
-      // Map each file to its last modified date (safely)
-      final fileDateMap = <String, DateTime>{};
-      for (final filePath in duplicateGroup.paths) {
-        try {
-          final file = File(filePath);
-          if (await file.exists()) {
-            fileDateMap[filePath] = await file.lastModified();
-          }
-        } catch (e) {
-          print('Error getting file date for $filePath: $e');
-          continue; // Skip unreadable or missing files
-        }
-      }
-
-      if (fileDateMap.isEmpty) return false;
-
-      String? fileToKeep;
       if (keepOldest) {
-        // Find the oldest file to keep
-        fileToKeep = fileDateMap.entries
-            .reduce((a, b) => a.value.isBefore(b.value) ? a : b)
-            .key;
+        return await deleteGroupKeepOldest(duplicateGroup);
       } else {
-        // Find the newest file to keep
-        fileToKeep = fileDateMap.entries
-            .reduce((a, b) => a.value.isAfter(b.value) ? a : b)
-            .key;
+        return await deleteGroupKeepNewest(duplicateGroup);
       }
-
-      final recycleBinService = RecycleBinService();
-      var deletedCount = 0;
-
-      // Delete all files except the one to keep
-      for (final filePath in duplicateGroup.paths) {
-        if (filePath == fileToKeep) continue;
-
-        final file = File(filePath);
-        if (await file.exists()) {
-          try {
-            final success = await recycleBinService.moveToRecycleBin(filePath);
-            if (success) {
-              deletedCount++;
-            }
-          } catch (e) {
-            print('Error moving file to recycle bin $filePath: $e');
-          }
-        }
-      }
-
-      return deletedCount > 0;
     } catch (e) {
       print('Error deleting duplicate group: $e');
       return false;
     }
   }
+
+  // Helper method to get duplicate bin directory
+  Future<Directory> _getDupBinDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final dupBinDir = Directory('${appDir.path}/DupBin');
+    if (!await dupBinDir.exists()) {
+      await dupBinDir.create(recursive: true);
+    }
+    return dupBinDir;
+  }
+
+// Delete duplicate group keeping the oldest file
+Future<bool> deleteGroupKeepOldest(DuplicateFile duplicateGroup) async {
+  try {
+    final dupBin = await _getDupBinDirectory();
+
+    if (duplicateGroup.paths.length <= 1) return true;
+
+    // Map each file path to its last modified date (safely)
+    final fileDateMap = <String, DateTime>{};
+    for (final filePath in duplicateGroup.paths) {
+      try {
+        final file = File(filePath);
+        if (await file.exists()) {
+          fileDateMap[filePath] = await file.lastModified();
+        }
+      } catch (e) {
+        continue; // Skip unreadable or missing files
+      }
+    }
+
+    if (fileDateMap.isEmpty) return false;
+
+    // Identify the oldest file to keep
+    final oldestPath = fileDateMap.entries.reduce((a, b) => 
+        a.value.isBefore(b.value) ? a : b).key;
+
+    // Delete all files except the oldest one
+    for (final filePath in duplicateGroup.paths) {
+      if (filePath == oldestPath) continue;
+
+      final file = File(filePath);
+      if (await file.exists()) {
+        try {
+          // Use RecycleBinService to properly move file
+          await _recycleBinService.moveToRecycleBin(filePath);
+        } catch (e) {
+          print('Failed to move file $filePath: $e');
+          continue;
+        }
+      }
+    }
+
+    return true;
+  } catch (e) {
+    print('Error in deleteGroupKeepOldest: $e');
+    return false;
+  }
+}
+
+// Delete duplicate group keeping the newest file
+Future<bool> deleteGroupKeepNewest(DuplicateFile duplicateGroup) async {
+  try {
+    final dupBin = await _getDupBinDirectory();
+
+    if (duplicateGroup.paths.length <= 1) return true;
+
+    // Map each file path to its last modified date (safely)
+    final fileDateMap = <String, DateTime>{};
+    for (final filePath in duplicateGroup.paths) {
+      try {
+        final file = File(filePath);
+        if (await file.exists()) {
+          fileDateMap[filePath] = await file.lastModified();
+        }
+      } catch (e) {
+        continue; // Skip unreadable or missing files
+      }
+    }
+
+    if (fileDateMap.isEmpty) return false;
+
+    // Identify the newest file to keep
+    final newestPath = fileDateMap.entries.reduce((a, b) =>
+        a.value.isAfter(b.value) ? a : b).key;
+
+    // Delete all files except the newest one
+    for (final filePath in duplicateGroup.paths) {
+      if (filePath == newestPath) continue;
+      await _recycleBinService.moveToRecycleBin(filePath);
+    }
+
+    return true;
+  } catch (e) {
+    print('Error in deleteGroupKeepNewest: $e');
+    return false;
+  }
+}
 
   Future<int> getFileSize(String filePath) async {
     try {
