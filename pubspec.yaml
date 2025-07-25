@@ -31,6 +31,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: "^0.14.4"
 
 flutter:
   uses-material-design: true
@@ -38,3 +39,9 @@ flutter:
 # iOS specific configuration
 ios:
   deployment_target: '12.0'
+
+# App icon configuration
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/insert_drive_file.svg"
