@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:open_filex/open_filex.dart';
@@ -6,7 +5,11 @@ import 'dart:io';
 import 'package:path/path.dart' as pathlib;
 import '../blocs/duplicate_finder_bloc.dart';
 import '../blocs/duplicate_finder_state.dart';
+import '../blocs/duplicate_finder_event.dart';
 import '../services/file_service.dart';
+import '../models/duplicate_file.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
 
 class ScanSummary extends StatelessWidget {
   final FileService _fileService = FileService();
@@ -97,7 +100,7 @@ class ScanSummary extends StatelessWidget {
                       final firstFilePath = duplicate.paths.first;
                       final fileName = pathlib.basename(firstFilePath);
                       final folderPath = pathlib.dirname(firstFilePath);
-                      
+
                       return Container(
                         width: 140,
                         margin: EdgeInsets.only(right: 8),
@@ -219,10 +222,65 @@ class ScanSummary extends StatelessWidget {
                             '${duplicate.count} duplicates • ${_fileService.formatFileSize(duplicate.size)}',
                             style: TextStyle(color: Colors.grey[600]),
                           ),
+                          trailing: PopupMenuButton<String>(
+                        onSelected: (value) async {
+                          if (value == 'delete_except_oldest') {
+                            await _deleteGroupKeepOldest(duplicate, context);
+                          } else if (value == 'delete_except_newest') {
+                            await _deleteGroupKeepNewest(duplicate, context);
+                          } else if (value == 'delete_except_first') {
+                            await _deleteAllExceptFirst(duplicate, context);
+                          } else if (value == 'delete_all') {
+                            await _deleteAllFiles(duplicate, context);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem<String>(
+                            value: 'delete_except_oldest',
+                            child: Row(
+                              children: [
+                                Icon(Icons.history, size: 18, color: Colors.blue),
+                                SizedBox(width: 8),
+                                Text('Keep Oldest, Delete Others'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'delete_except_newest',
+                            child: Row(
+                              children: [
+                                Icon(Icons.new_releases, size: 18, color: Colors.green),
+                                SizedBox(width: 8),
+                                Text('Keep Newest, Delete Others'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'delete_except_first',
+                            child: Row(
+                              children: [
+                                Icon(Icons.auto_delete, size: 18, color: Colors.orange),
+                                SizedBox(width: 8),
+                                Text('Keep First, Delete Others'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'delete_all',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_forever, size: 18, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Delete All'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                           children: duplicate.paths.map((filePath) {
                             final fileName = pathlib.basename(filePath);
                             final folderPath = pathlib.dirname(filePath);
-                            
+
                             return ListTile(
                               contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
                               leading: Icon(Icons.insert_drive_file, size: 20),
@@ -256,6 +314,117 @@ class ScanSummary extends StatelessWidget {
         return SizedBox.shrink();
       },
     );
+  }
+
+  Future<void> _deleteGroupKeepOldest(DuplicateFile duplicate, BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Keep Oldest File'),
+        content: Text('Keep the oldest file and delete ${duplicate.count - 1} others? This action moves duplicates to recycle bin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+            child: Text('Keep Oldest'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      context.read<DuplicateFinderBloc>().add(DeleteDuplicateGroup(duplicate, keepOldest: true));
+      _showSnackBar(context, '${duplicate.count - 1} duplicate files moved to recycle bin, oldest file kept');
+    }
+  }
+
+  Future<void> _deleteGroupKeepNewest(DuplicateFile duplicate, BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Keep Newest File'),
+        content: Text('Keep the newest file and delete ${duplicate.count - 1} others? This action moves duplicates to recycle bin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            child: Text('Keep Newest'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      context.read<DuplicateFinderBloc>().add(DeleteDuplicateGroup(duplicate, keepOldest: false));
+      _showSnackBar(context, '${duplicate.count - 1} duplicate files moved to recycle bin, newest file kept');
+    }
+  }
+
+  Future<void> _deleteAllExceptFirst(DuplicateFile duplicate, BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Keep First File'),
+        content: Text('Keep the first file and delete ${duplicate.count - 1} others? This action moves duplicates to recycle bin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: Text('Keep First'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Delete all files except the first one
+      for (int i = 1; i < duplicate.paths.length; i++) {
+        context.read<DuplicateFinderBloc>().add(DeleteFile(duplicate.paths[i]));
+      }
+
+      _showSnackBar(context, '${duplicate.count - 1} duplicate files moved to recycle bin, first file kept');
+    }
+  }
+
+  Future<void> _deleteAllFiles(DuplicateFile duplicate, BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete All Files'),
+        content: Text('Are you sure you want to delete all ${duplicate.count} files? This action moves them to recycle bin.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('Delete All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      for (String filePath in duplicate.paths) {
+        context.read<DuplicateFinderBloc>().add(DeleteFile(filePath));
+      }
+
+      _showSnackBar(context, '${duplicate.count} files moved to recycle bin');
+    }
   }
 
   IconData _getFileIcon(String fileName) {
@@ -311,53 +480,47 @@ class ScanSummary extends StatelessWidget {
   }
 
   Future<void> _openFolder(String folderPath, BuildContext context) async {
-    try {
-      if (Platform.isAndroid) {
-        // For Android, use android_intent_plus to open specific folder
-        try {
-          // First check if the folder exists
-          final directory = Directory(folderPath);
-          if (await directory.exists()) {
-            // Try to open with file manager intent
-            final result = await OpenFilex.open(folderPath);
-            if (result.type != ResultType.done) {
-              // Fallback: show folder path in snackbar
-              _showSnackBar(context, 'Folder: $folderPath');
-            }
-          } else {
-            _showSnackBar(context, 'Folder does not exist: $folderPath');
-          }
-        } catch (e) {
-          _showSnackBar(context, 'Folder: $folderPath');
-        }
-      } else if (Platform.isIOS) {
-        // iOS doesn't allow direct folder access, show message
-        _showSnackBar(context, 'Folder access not available on iOS');
-      } else {
-        // For desktop platforms
-        final directory = Directory(folderPath);
-        if (await directory.exists()) {
-          final result = await OpenFilex.open(folderPath);
-          if (result.type != ResultType.done) {
-            _showSnackBar(context, 'Could not open folder');
-          }
-        } else {
-          _showSnackBar(context, 'Folder does not exist');
-        }
-      }
-    } catch (e) {
-      _showSnackBar(context, 'Error opening folder: $e');
+  try {
+    final directory = Directory(folderPath);
+    if (!await directory.exists()) {
+      _showSnackBar(context, 'Folder does not exist: $folderPath');
+      return;
     }
-  }
 
-  void _showSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    if (Platform.isAndroid) {
+      final uri = Uri.file(folderPath);
+      final intent = AndroidIntent(
+        action: 'android.intent.action.VIEW',
+        data: uri.toString(),
+        type: "*/*",
+        flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+      );
+      await intent.launch();
+    } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      // Use native file explorer on desktop
+      await Process.run(
+        Platform.isWindows
+            ? 'explorer'
+            : Platform.isMacOS
+                ? 'open'
+                : 'xdg-open',
+        [folderPath],
+      );
+    } else if (Platform.isIOS) {
+      _showSnackBar(context, 'Folder opening is not supported on iOS');
+    } else {
+      _showSnackBar(context, 'Unsupported platform');
+    }
+  } catch (e) {
+    _showSnackBar(context, 'Error opening folder: $e');
   }
+}
+
+void _showSnackBar(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message)),
+  );
+} 
 }
 
 class _SummaryCard extends StatelessWidget {
