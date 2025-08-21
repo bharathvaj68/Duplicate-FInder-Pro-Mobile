@@ -1,7 +1,7 @@
 
 # 🔍 Duplicate Finder Pro (APK)
 
-A **Flutter-powered mobile application** to scan, detect, and manage duplicate files on **Android devices**.  
+A **Flutter-powered mobile application** to scan, detect, and manage duplicate files on **Android and IOS devices**.  
 Helps free up space, reduce clutter, and keep your storage organized.  
 
 ---
