@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'DuplicateFinder Pro',
+      title: 'Duplicate Finder Pro',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6200EE),
@@ -262,7 +262,7 @@ class _PermissionWrapperState extends State<PermissionWrapper> {
     if (!_permissionsGranted) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('DuplicateFinder Pro'),
+          title: Text('Duplicate Finder Pro'),
         ),
         body: Center(
           child: Padding(
@@ -896,7 +896,7 @@ class SplashScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'DuplicateFinder Pro',
+                    'Duplicate Finder Pro',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -1048,7 +1048,7 @@ class _HomeScreenState extends State<HomeScreen> {
       pinned: true,
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
-          'DuplicateFinder Pro',
+          'Duplicate Finder Pro',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,

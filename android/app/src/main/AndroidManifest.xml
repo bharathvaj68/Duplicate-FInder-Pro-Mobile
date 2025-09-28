@@ -14,9 +14,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="DupFile Finder"
+        android:label="Duplicate Finder Pro"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/launcher_icon"
         android:requestLegacyExternalStorage="true"
         android:preserveLegacyExternalStorage="true"
         android:usesCleartextTraffic="false">
