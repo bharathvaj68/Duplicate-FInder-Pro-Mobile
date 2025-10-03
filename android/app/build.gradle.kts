@@ -14,10 +14,9 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
-
 android {
     namespace = "com.example.dupfile_apk"
-    compileSdk = 35                      // ✅ Use at least 33 for compatibility
+    compileSdk = 35
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -26,29 +25,40 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()  // 🔄 Match Java version
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
         applicationId = "com.example.dupfile_apk"
-        minSdk = 21                      // ✅ Minimum SDK required for many plugins
-        targetSdk = 34                   // ✅ Target latest stable SDK
+        minSdk = 21
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String
+            if (keystorePropertiesFile.exists()) {
+                storeFile = keystoreProperties["storeFile"]?.toString()?.let { file(it) }
+                storePassword = keystoreProperties["storePassword"]?.toString()
+                keyAlias = keystoreProperties["keyAlias"]?.toString()
+                keyPassword = keystoreProperties["keyPassword"]?.toString()
+            }
         }
     }
 
     buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
+        getByName("release") {
+            // Only apply signing if keystore file exists
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
