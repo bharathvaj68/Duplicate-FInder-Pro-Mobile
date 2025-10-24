@@ -88,8 +88,6 @@ This project is licensed under the **MIT License**.
 
 ```
 
----
-
 This version looks **professional with a touch of modern style** — no clutter, just a few meaningful emojis for headings.  
 
 👉 Do you want me to create a **matching README for your PC version repo** in the same professional style (to keep branding consistent)?
