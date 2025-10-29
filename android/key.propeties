@@ -1,4 +1,4 @@
 storePassword=duplicate
 keyPassword=duplicate
-keyAlias=upload
-storeFile=app/my-release-key.keystore
+keyAlias=secret_key
+storeFile=../../secret_key.jks
