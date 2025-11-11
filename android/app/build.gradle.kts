@@ -31,7 +31,7 @@ android {
     defaultConfig {
         applicationId = "com.nikocomet.duplicatefinderpro"
         minSdk = 21
-        targetSdk = 34
+		targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -55,6 +55,10 @@ android {
             }
             isMinifyEnabled = true
             isShrinkResources = true
+			ndk {
+				// Generate full native debug symbols zip for Play Console
+				debugSymbolLevel = "FULL"
+			}
             proguardFiles(
                 getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro"
