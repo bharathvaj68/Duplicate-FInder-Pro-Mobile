@@ -15,7 +15,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.dupfile_apk"
+    namespace = "com.nikocomet.duplicatefinderpro"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.dupfile_apk"
+        applicationId = "com.nikocomet.duplicatefinderpro"
         minSdk = 21
         targetSdk = 34
         versionCode = flutter.versionCode
